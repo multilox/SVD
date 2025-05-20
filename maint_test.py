@@ -10,20 +10,20 @@ def calculate_metrics(original, compressed, grayscale=True):
     """Вычисляет PSNR и SSIM между оригиналом и сжатым изображением."""
     if grayscale:
         psnr = compare_psnr(original, compressed, data_range=1.0)
-        # Для маленьких изображений уменьшаем win_size
+
         win_size = min(7, original.shape[0], original.shape[1])
         win_size = win_size if win_size % 2 == 1 else win_size - 1  # делаем нечётным
         ssim = compare_ssim(original, compressed, data_range=1.0, win_size=win_size)
     else:
         psnr = compare_psnr(original, compressed, data_range=1.0)
-        # Для цветных изображений указываем channel_axis
+
         win_size = min(7, original.shape[0], original.shape[1])
         win_size = win_size if win_size % 2 == 1 else win_size - 1  # делаем нечётным
         ssim = compare_ssim(original, compressed, data_range=1.0,
                            channel_axis=2, win_size=win_size)
     return psnr, ssim
 
-# Попробуем подключить CuPy для GPU
+
 try:
     import cupy as cp
     GPU_AVAILABLE = True
@@ -87,7 +87,7 @@ def apply_gaussian_filter_and_save(compressed_images, k_values, output_dir, imag
     return denoised_images
 
 
-def plot_singular_values(image, grayscale=True, max_values=500):
+def plot_singular_values(image, grayscale=True, max_values=1200):
     """
     Строит график сингулярных значений. При большом числе — обрезает до max_values.
 
@@ -175,15 +175,15 @@ def save_compressed_images(original, compressed_images, k_values, output_dir, im
 
 # === НАСТРОЙКИ ===
 image_dir = 'media'
-image_name = 'image2.jpg'
+image_name = 'image3.jpg'
 output_dir = 'resized'
-k_values = [5, 20, 50, 100,512]
+k_values = [512]
 gray = False
-use_gpu = False  # <-- Включи True для GPU, если установлен CuPy
+use_gpu = True  # <-- Включи True для GPU, если установлен CuPy
 # Дополнительные функции
 enable_plot_singular = True
 enable_find_optimal_k = True
-energy_threshold = 0.99  # Сколько энергии хотим сохранить
+energy_threshold = 0.999  # Сколько энергии хотим сохранить
 
 original_image = load_and_convert_image(image_dir, image_name, grayscale=gray)
 print(f"Сжатие изображений... Используется {'GPU' if use_gpu and GPU_AVAILABLE else 'CPU'}")
@@ -197,7 +197,7 @@ if enable_find_optimal_k:
 if enable_plot_singular:
     plot_singular_values(original_image, grayscale=gray)
 
-# Сжатие изображения
+
 if gray:
     compressed_images = [
         svd_compress(original_image, k, use_gpu=use_gpu)
@@ -209,30 +209,29 @@ else:
         for k in tqdm(k_values, desc="Обработка SVD (цвет)")
     ]
 
-# Сохранение изображений
 print("Сохранение изображений...")
 save_compressed_images(original_image, compressed_images, k_values, output_dir, image_name, grayscale=gray)
 print(f"Изображения сохранены в директории: {output_dir}")
 
 # Метрики качества
-print("\nМетрики качества:")
-for img, k in zip(compressed_images, k_values):
-    psnr, ssim = calculate_metrics(original_image, img, grayscale=gray)
-    print(f"k = {k}: PSNR = {psnr:.2f} dB, SSIM = {ssim:.4f}")
+# print("\nМетрики качества:")
+# for img, k in zip(compressed_images, k_values):
+#     psnr, ssim = calculate_metrics(original_image, img, grayscale=gray)
+#     print(f"k = {k}: PSNR = {psnr:.2f} dB, SSIM = {ssim:.4f}")
 
-# Гауссова фильтрация
-sigma = 1.5  # Параметр размытия
-denoised_images = apply_gaussian_filter_and_save(
-    compressed_images,
-    k_values,
-    output_dir,
-    image_name,
-    grayscale=gray,
-    sigma=sigma
-)
 
-# Метрики после фильтрации
-print("\nМетрики качества после фильтрации Гауссом:")
-for img, k in zip(denoised_images, k_values):
-    psnr, ssim = calculate_metrics(original_image, img, grayscale=gray)
-    print(f"k = {k}: PSNR = {psnr:.2f} dB, SSIM = {ssim:.4f}")
+# sigma = 1.5
+# denoised_images = apply_gaussian_filter_and_save(
+#     compressed_images,
+#     k_values,
+#     output_dir,
+#     image_name,
+#     grayscale=gray,
+#     sigma=sigma
+# )
+
+#
+# print("\nМетрики качества после фильтрации Гауссом:")
+# for img, k in zip(denoised_images, k_values):
+#     psnr, ssim = calculate_metrics(original_image, img, grayscale=gray)
+#     print(f"k = {k}: PSNR = {psnr:.2f} dB, SSIM = {ssim:.4f}")
